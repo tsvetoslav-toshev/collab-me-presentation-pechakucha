@@ -7,9 +7,8 @@
 <!--
   Collab-Me - pitch presentation (offline, runs from disk in any modern browser).
   Images are embedded as base64 - this single file is fully self-contained (USB-ready).
-  Speaker-note edits (the pencil button) are saved in the browser's localStorage.
   Controls:  click RIGHT half / -> / Space = next     click LEFT half / <- = previous
-             F = fullscreen   N = speaker notes   L = BG/EN   R = replay animation
+             F = fullscreen   L = BG/EN   R = replay animation
              Bottom bar has all of these + a collapse arrow.
 -->
 <style>
@@ -261,27 +260,6 @@
   #bar .hints{font-size:11px;color:rgba(255,255,255,.62);padding:0 6px 0 2px;white-space:nowrap}
   #bar .hints b{color:#c4b5fd}
   #progress{position:fixed;top:0;left:0;height:4px;background:var(--grad);z-index:60;transition:width .35s ease}
-
-  /* speaker notes */
-  #notes{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);z-index:55;
-    width:min(900px,86vw);background:rgba(13,11,26,.95);color:#e5e7eb;border:1px solid rgba(255,255,255,.14);
-    border-radius:14px;padding:15px 20px;font-size:16px;line-height:1.5;display:none}
-  #notes.show{display:block}
-  #notes .h{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#a78bfa;font-weight:700;margin-bottom:6px;display:flex;align-items:center}
-  #notes .h .sep{color:#4b5563;margin:0 9px;font-weight:400}
-  #notes .h button{background:transparent;border:none;color:#a78bfa;cursor:pointer;font:inherit;font-size:12px;
-    font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:0}
-  #notes .h button:hover{color:#d8b4fe;text-decoration:underline}
-  #notesEdit{display:none}
-  #notesEdit.show{display:block}
-  #notesEdit label{display:block;font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:.1em;margin:9px 0 4px}
-  #notesEdit textarea{width:100%;min-height:60px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);
-    border-radius:9px;color:#e5e7eb;font:inherit;font-size:15px;line-height:1.45;padding:8px 11px;resize:vertical;outline:none}
-  #notesEdit textarea:focus{border-color:#a78bfa}
-  #notesEdit .ebtns{display:flex;gap:9px;justify-content:flex-end;margin-top:11px}
-  #notesEdit .ebtns button{border:none;border-radius:9px;padding:8px 18px;font-weight:700;font-size:13px;cursor:pointer}
-  #notesEdit .ebtns .save{background:var(--grad);color:#fff}
-  #notesEdit .ebtns .cancel{background:rgba(255,255,255,.12);color:#e5e7eb}
 
   /* language visibility
      (!important so the hide rule always beats more-specific display rules
@@ -799,23 +777,8 @@
     <button id="replay" title="Повтори анимацията (R)">&#8635;</button>
     <button id="play" title="PechaKucha авто-режим 20с (P)">&#9654;</button>
     <button class="lng" id="lang" title="Език (L)">EN</button>
-    <button id="notesBtn" title="Бележки (N)">&#128209;</button>
     <button id="fs" title="Цял екран (F)">&#9974;</button>
-    <span class="hints"><b>&#8594;/&#8592;</b> навигация · <b>P</b> авто 20с · <b>F</b> екран · <b>N</b> бележки · <b>L</b> език · <b>R</b> повтори</span>
-  </div>
-</div>
-
-<div id="notes">
-  <div class="h">Speaker notes <span class="sep">|</span>
-    <button id="editNotes" title="Редактирай бележките за този слайд (BG + EN)">&#9998; Edit</button></div>
-  <div id="notesText"></div>
-  <div id="notesEdit">
-    <label>BG</label><textarea id="noteBG"></textarea>
-    <label>EN</label><textarea id="noteEN"></textarea>
-    <div class="ebtns">
-      <button class="cancel" id="noteCancel">Cancel</button>
-      <button class="save" id="noteSave">Save</button>
-    </div>
+    <span class="hints"><b>&#8594;/&#8592;</b> навигация · <b>P</b> авто 20с · <b>F</b> екран · <b>L</b> език · <b>R</b> повтори</span>
   </div>
 </div>
 
@@ -826,66 +789,9 @@
   var stage = document.getElementById('stage');
   var counter = document.getElementById('counter');
   var progress = document.getElementById('progress');
-  var notes = document.getElementById('notes');
-  var notesText = document.getElementById('notesText');
   var bar = document.getElementById('bar');
   var toggleBtn = document.getElementById('toggle');
 
-  /* Spoken narration per slide (~20s each). Doubles as your teleprompter.
-     The full bilingual script also lives in collab-me-pechakucha-script.md */
-  var NOTES = {
-    bg:[
-      "Аз съм Цветослав. Над 70 проекта - кино, реклама, театър, видеоигри. И като всеки артист, когото познавам, години наред съм просел собствените си пари. Тази вечер искам да го променя.",
-      "Композитор, мултиинструменталист, саунд дизайнер. Минал съм през всяка страна на творческия процес - сам, в екип, за студиа. Познавам счупените места, защото съм се натъртвал на всяко от тях.",
-      "България дава 0.5% от БВП за култура - сред най-ниските в Европа. Държавният фонд е в София, затрупан с формуляри. Но София не е България - талантът по малките градове остава невидим.",
-      "Завършваш и никой не ти помага. Всички искат опит, който никога не са ти дали шанс да натрупаш. Без портфолио, без контакти - питаш от уста на уста и се надяваш някой да каже „да“.",
-      "Има талант - навсякъде. Но той твори в изолация. Артистите не се намират помежду си, не стигат до публиката си. Хиляди гласове - но няма свързаност.",
-      "Днес всичко живее в чата - Messenger, Viber, Instagram, имейл. Договори, файлове, идеи, пари - разпръснати по социалните мрежи и незащитени. Нито професионално, нито сигурно.",
-      "Плащаш кафето, преди да отпиеш. Не си тръгваш от ресторанта, без да платиш. Никой не те нарича труден за това. Това е просто нормално уважение към нечий труд.",
-      "Но артистът доставя пръв - време, умения, път, енергия. После чака. 60, 90, 180 дни. Извинение след извинение. В един момент спира да е плащане и започва да прилича на просия.",
-      "А сега ни казват, че машината е артистът. AI е инструмент - не годините, не ръката, не душата. Ако не направим нищо, човешкият занаят тихо умира.",
-      "Затова строя Collab-Me - платформа за творчески колаборации. Да се свържеш, да колаборираш, да ти платят справедливо и да бъдеш видим - в България, на Балканите и в Европа.",
-      "Влизаш и показваш какво правиш, образованието и целите си. Платформата те свързва с правилните хора - и с фирмите, които имат нужда точно от теб.",
-      "Разглеждаш проекти с ясна, честна цена - без надлъгване кой ще падне по-ниско. Кандидатстваш с един клик за това, което наистина ти пасва.",
-      "Работите заедно в едно защитено пространство - чат, файлове, задачи, идеи. Без разпръснати месинджъри. Данните и работата ти остават твои.",
-      "Завършваш, плащането е подсигурено предварително и се освобождава при предаване. Получаваш отзив - а проектът автоматично влиза в портфолиото ти. Никакво гонене на пари.",
-      "И не остава само дигитално - става цикъл. Срещни се с други професионалисти на нетуъркинг, решават да създадат проект заедно, и го показват на живо - концерти, изложби, публика. После отначало.",
-      "Това не е ниша. Културният сектор на ЕС е 202 милиарда евро. 7.7 милиона души работят в културата - и около 78% са независими творци и микро-фирми, сами. Точно за тях го строим.",
-      "България има потенциал. От физика и математика до музика и изкуство - всяка година се раждат хиляди таланти. Заслужават да бъдат откривани по-лесно. Същото важи за Балканите и Европа.",
-      "Първо България. После Балканите. После Европа. Общност, която расте всяка година.",
-      "Всеки бяга да автоматизира изкуството. Аз правя обратното - пазя хората, които го създават. Защото артистите са най-силни заедно. Строя го сега - намери ме тази вечер.",
-      "Collab-Me. Сканирай и влез. Ако си творец, вярващ или можеш да помогнеш да стане реалност - намери ме тази вечер. Нека творчеството остане човешко."
-    ],
-    en:[
-      "I'm Tsvetoslav. Over 70 projects - film, advertising, theatre, video games. And like every artist I know, I've spent years begging for my own money. Tonight, I want to change that.",
-      "Composer, multi-instrumentalist, sound designer. I've been through every side of creative work - solo, in teams, for studios. I know the broken parts, because I've bruised myself on every one.",
-      "Bulgaria spends 0.5% of GDP on culture - among the lowest in Europe. The state fund sits in Sofia, buried in forms. But Sofia is not Bulgaria - talent in small towns stays invisible.",
-      "You graduate, and no one helps. Everyone wants experience you were never allowed to build. No portfolio, no contacts - you just ask around, mouth to mouth, hoping someone says yes.",
-      "There's talent - everywhere. But it works in isolation. Artists don't find each other, or reach their audience. Thousands of voices - but no connection.",
-      "Today everything lives in chat - Messenger, Viber, Instagram, email. Contracts, files, ideas, money - scattered across social media and unprotected. Neither professional nor safe.",
-      "You pay for coffee before you sip it. You don't leave a restaurant without paying. Nobody calls you difficult for it. It's just normal respect for someone's work.",
-      "But the artist delivers first - time, skill, travel, energy. Then waits. 60, 90, 180 days. Excuse after excuse. At some point it stops being payment and starts to feel like begging.",
-      "And now we're told the machine is the artist. AI is an instrument - not the years, not the hand, not the soul. If we do nothing, the human craft quietly dies.",
-      "So I'm building Collab-Me - A A Platform for Creative Collaborationtion. To connect, collaborate, get paid fairly, and be seen - across Bulgaria, the Balkans and Europe.",
-      "You join and show what you do, your education and your goals. The platform connects you with the right people - and with the companies that need exactly you.",
-      "You browse projects with a clear, fair price - no race over who'll go lower. You apply with one click to what truly fits you.",
-      "You work together in one protected space - chat, files, tasks, ideas. No scattered messengers. Your data and your work stay yours.",
-      "You finish, the payment is secured upfront and released on delivery. You get a review - and the project goes automatically into your portfolio. No chasing money.",
-      "And it doesn't stay digital - it becomes a cycle. Meet with people at networking, decide to create a project together, and show it live - concerts, exhibitions, an audience. Then it starts again.",
-      "This is not niche. The EU cultural sector is 202 billion euro. 7.7 million people work in culture - and about 78% are independent artists and micro-firms, alone. We build it for them.",
-      "Bulgaria has potential. From physics and maths to music and art - thousands of talents emerge every year. They deserve to be discovered more easily. The same is true across the Balkans and Europe.",
-      "Bulgaria first. Then the Balkans. Then Europe. A community that grows every year.",
-      "Everyone's racing to automate art. I'm doing the opposite - protecting the people who make it. Because artists are strongest together. I'm building it now - find me tonight.",
-      "Collab-Me. Scan to open. If you're a creator, a believer, or someone who can help make it real - find me tonight. Let's keep creativity human."
-    ]
-  };
-
-  /* edited speaker notes persist in this browser's localStorage */
-  var LS_KEY = 'collabme_pechakucha_notes_v1';
-  try{
-    var saved = JSON.parse(localStorage.getItem(LS_KEY)||'null');
-    if(saved && saved.bg && saved.en && saved.bg.length===total){ NOTES.bg=saved.bg; NOTES.en=saved.en; }
-  }catch(err){}
 
   function fit(){
     var s = Math.min(window.innerWidth/1280, window.innerHeight/720);
@@ -897,8 +803,6 @@
     slides.forEach(function(s,i){ s.classList.toggle('active', i===cur); });
     counter.textContent = (cur+1)+' / '+total;
     progress.style.width = ((cur+1)/total*100)+'%';
-    closeNoteEdit(); // navigating away discards an open editor
-    updNotes();
     armTimerBar(); scheduleAuto(); // PechaKucha: reset the 20s clock on every slide change
   }
   var qrIdx = total-1, ctaIdx = total-2; // slide 11 (QR) and slide 10 (CTA)
@@ -921,27 +825,7 @@
     document.body.classList.toggle('lang-en');
     document.documentElement.lang = isEN()?'en':'bg';
     document.getElementById('lang').textContent = isEN()?'BG':'EN';
-    updNotes();
   }
-  function updNotes(){ notesText.textContent = (isEN()?NOTES.en:NOTES.bg)[cur] || ''; }
-  function toggleNotes(){ notes.classList.toggle('show'); }
-
-  /* speaker-notes editor (pencil button): edits BG + EN for the current slide */
-  var notesEdit = document.getElementById('notesEdit');
-  var noteBG = document.getElementById('noteBG'), noteEN = document.getElementById('noteEN');
-  function openNoteEdit(){
-    noteBG.value = NOTES.bg[cur]||''; noteEN.value = NOTES.en[cur]||'';
-    notesEdit.classList.add('show'); notesText.style.display='none';
-    (isEN()?noteEN:noteBG).focus();
-  }
-  function closeNoteEdit(){ notesEdit.classList.remove('show'); notesText.style.display=''; }
-  document.getElementById('editNotes').onclick = function(e){ e.stopPropagation(); openNoteEdit(); };
-  document.getElementById('noteCancel').onclick = closeNoteEdit;
-  document.getElementById('noteSave').onclick = function(){
-    NOTES.bg[cur] = noteBG.value; NOTES.en[cur] = noteEN.value;
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(NOTES)); }catch(err){}
-    closeNoteEdit(); updNotes();
-  };
   function toggleFS(){
     if(!document.fullscreenElement){ document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); }
     else { document.exitFullscreen&&document.exitFullscreen(); }
@@ -951,7 +835,6 @@
   document.getElementById('prev').onclick = prev;
   document.getElementById('replay').onclick = replay;
   document.getElementById('lang').onclick = toggleLang;
-  document.getElementById('notesBtn').onclick = toggleNotes;
   document.getElementById('fs').onclick = toggleFS;
   toggleBtn.onclick = function(){
     bar.classList.toggle('open');
@@ -966,20 +849,17 @@
 
   // split-screen click: left half = previous, right half = next
   document.getElementById('viewport').addEventListener('click', function(e){
-    if(e.target.closest('#bar') || e.target.closest('#notes')) return;
+    if(e.target.closest('#bar')) return;
     if(e.clientX < window.innerWidth/2) prev(); else next();
   });
 
   document.addEventListener('keydown', function(e){
-    // while typing in the notes editor, keys must not trigger navigation
-    if(e.target && (e.target.tagName==='TEXTAREA' || e.target.tagName==='INPUT')) return;
     switch(e.key){
       case 'ArrowRight': case ' ': case 'PageDown': e.preventDefault(); next(); break;
       case 'ArrowLeft': case 'PageUp': e.preventDefault(); prev(); break;
       case 'Home': go(0); break;
       case 'End': go(total-1); break;
       case 'f': case 'F': toggleFS(); break;
-      case 'n': case 'N': toggleNotes(); break;
       case 'l': case 'L': toggleLang(); break;
       case 'r': case 'R': replay(); break;
       case 'q': case 'Q': toggleQR(); break;
